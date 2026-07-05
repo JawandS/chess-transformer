@@ -89,7 +89,7 @@ class ChessGuiApp:
         self.black_var = tk.StringVar(value="simple-transformer")
         self.model_notation_var = tk.StringVar(value=NotationStyle.UCI.value)
         self.history_notation_var = tk.StringVar(value=NotationStyle.SAN.value)
-        self.transformer_checkpoint_var = tk.StringVar(value="runs/2m/model.pt")
+        self.transformer_checkpoint_var = tk.StringVar(value="runs/2m_v2_top/model.pt")
         self.human_input_var = tk.StringVar()
         self.status_var = tk.StringVar(value="Configure players and start a game.")
 

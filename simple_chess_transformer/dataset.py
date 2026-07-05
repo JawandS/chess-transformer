@@ -6,6 +6,8 @@ from collections import Counter
 from dataclasses import dataclass
 import json
 from pathlib import Path
+from typing import Iterator
+
 SPECIAL_TOKENS = ("<PAD>", "<BOS>", "<EOS>", "<UNK>")
 
 
@@ -24,19 +26,27 @@ def iter_csv_move_sequences(
     max_games: int | None = None,
     min_plies: int = 10,
     max_plies: int = 200,
+    highest_rated: bool = False,
+    min_average_rating: int | None = None,
 ) -> Iterator[list[str]]:
     import chess
     import csv
 
-    games_seen = 0
+    parsed_games: list[tuple[float, list[str]]] = []
     with input_path.open("r", newline="", encoding="utf-8") as handle:
         reader = csv.DictReader(handle)
         for row in reader:
-            if max_games is not None and games_seen >= max_games:
-                break
-
             san_moves = (row.get("moves") or "").split()
             if len(san_moves) < min_plies:
+                continue
+
+            try:
+                white_rating = int(row.get("white_rating") or 0)
+                black_rating = int(row.get("black_rating") or 0)
+            except ValueError:
+                continue
+            average_rating = (white_rating + black_rating) / 2
+            if min_average_rating is not None and average_rating < min_average_rating:
                 continue
 
             board = chess.Board()
@@ -54,8 +64,17 @@ def iter_csv_move_sequences(
             if not valid_game:
                 continue
 
-            games_seen += 1
-            yield uci_moves
+            parsed_games.append((average_rating, uci_moves))
+
+    if highest_rated:
+        parsed_games.sort(key=lambda item: item[0], reverse=True)
+
+    games_seen = 0
+    for _, uci_moves in parsed_games:
+        if max_games is not None and games_seen >= max_games:
+            break
+        games_seen += 1
+        yield uci_moves
 
 
 def prepare_dataset(
@@ -65,6 +84,8 @@ def prepare_dataset(
     min_plies: int = 10,
     max_plies: int = 200,
     min_move_frequency: int = 2,
+    highest_rated: bool = False,
+    min_average_rating: int | None = None,
 ) -> PreparedDatasetSummary:
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -78,6 +99,8 @@ def prepare_dataset(
         max_games=max_games,
         min_plies=min_plies,
         max_plies=max_plies,
+        highest_rated=highest_rated,
+        min_average_rating=min_average_rating,
     ):
         games_kept += 1
         sequences.append(moves)

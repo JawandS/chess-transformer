@@ -29,6 +29,8 @@ def build_parser() -> argparse.ArgumentParser:
     prepare_parser.add_argument("--min-plies", type=int, default=10)
     prepare_parser.add_argument("--max-plies", type=int, default=200)
     prepare_parser.add_argument("--min-move-frequency", type=int, default=2)
+    prepare_parser.add_argument("--highest-rated", action="store_true")
+    prepare_parser.add_argument("--min-average-rating", type=int, default=None)
 
     train_parser = subparsers.add_parser(
         "train", help="Train a small causal transformer on the prepared dataset."
@@ -63,6 +65,8 @@ def main() -> None:
             min_plies=args.min_plies,
             max_plies=args.max_plies,
             min_move_frequency=args.min_move_frequency,
+            highest_rated=args.highest_rated,
+            min_average_rating=args.min_average_rating,
         )
         print(f"Prepared {summary.games_kept} games in {summary.output_dir}")
         print(f"Vocabulary size: {summary.vocab_size}")
