@@ -1,4 +1,4 @@
-"""Dataset preparation for simple move-sequence modeling."""
+"""Dataset preparation for simple move-sequence modeling from `games.csv`."""
 
 from __future__ import annotations
 
@@ -6,9 +6,6 @@ from collections import Counter
 from dataclasses import dataclass
 import json
 from pathlib import Path
-from typing import Iterator, TextIO
-
-
 SPECIAL_TOKENS = ("<PAD>", "<BOS>", "<EOS>", "<UNK>")
 
 
@@ -22,64 +19,43 @@ class PreparedDatasetSummary:
     max_sequence_length: int
 
 
-def _open_text_input(path: Path) -> TextIO:
-    if path.suffix == ".zst":
-        import zstandard
-
-        binary_handle = path.open("rb")
-        dctx = zstandard.ZstdDecompressor()
-        stream = dctx.stream_reader(binary_handle)
-        return stream_text_reader(stream, binary_handle)
-    return path.open("r", encoding="utf-8", errors="replace")
-
-
-class stream_text_reader:
-    """Wrap a decompression stream as a text handle with clean close semantics."""
-
-    def __init__(self, stream, binary_handle) -> None:
-        import io
-
-        self._binary_handle = binary_handle
-        self._stream = stream
-        self._text = io.TextIOWrapper(stream, encoding="utf-8", errors="replace")
-
-    def __enter__(self):
-        return self._text
-
-    def __exit__(self, exc_type, exc, tb) -> None:
-        self.close()
-
-    def close(self) -> None:
-        self._text.close()
-        self._stream.close()
-        self._binary_handle.close()
-
-    def __getattr__(self, name: str):
-        return getattr(self._text, name)
-
-
-def iter_pgn_move_sequences(
+def iter_csv_move_sequences(
     input_path: Path,
     max_games: int | None = None,
     min_plies: int = 10,
     max_plies: int = 200,
 ) -> Iterator[list[str]]:
-    import chess.pgn
+    import chess
+    import csv
 
     games_seen = 0
-    with _open_text_input(input_path) as handle:
-        while True:
-            game = chess.pgn.read_game(handle)
-            if game is None:
-                break
-            games_seen += 1
-            if max_games is not None and games_seen > max_games:
+    with input_path.open("r", newline="", encoding="utf-8") as handle:
+        reader = csv.DictReader(handle)
+        for row in reader:
+            if max_games is not None and games_seen >= max_games:
                 break
 
-            moves = [move.uci() for move in game.mainline_moves()]
-            if len(moves) < min_plies:
+            san_moves = (row.get("moves") or "").split()
+            if len(san_moves) < min_plies:
                 continue
-            yield moves[:max_plies]
+
+            board = chess.Board()
+            uci_moves: list[str] = []
+            valid_game = True
+            for san_move in san_moves[:max_plies]:
+                try:
+                    move = board.parse_san(san_move)
+                except ValueError:
+                    valid_game = False
+                    break
+                uci_moves.append(move.uci())
+                board.push(move)
+
+            if not valid_game:
+                continue
+
+            games_seen += 1
+            yield uci_moves
 
 
 def prepare_dataset(
@@ -97,7 +73,7 @@ def prepare_dataset(
     games_kept = 0
     max_sequence_length = 0
 
-    for moves in iter_pgn_move_sequences(
+    for moves in iter_csv_move_sequences(
         input_path=input_path,
         max_games=max_games,
         min_plies=min_plies,

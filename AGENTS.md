@@ -7,3 +7,4 @@
 - Root files were reset to a minimal placeholder state to avoid coupling the simple experiment to the larger plan too early.
 - Active root now contains a minimal pipeline for downloading Lichess PGNs, preparing move-sequence datasets, and training a small local transformer.
 - Added `parse_lichess.py` as the primary streaming parser for the simpler board-state supervision path: stdin PGN to CSV rows of `fen_before -> uci_move`.
+- Extracted `chess.zip` into `simple_chess_transformer/games.csv`, removed the zip, and simplified the active code to read `games.csv` directly.

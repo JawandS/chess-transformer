@@ -6,27 +6,24 @@ import argparse
 from pathlib import Path
 
 from simple_chess_transformer.dataset import prepare_dataset
-from simple_chess_transformer.lichess import download_file
 from simple_chess_transformer.train import TrainConfig, train_model
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="chess-transformer",
-        description="Download Lichess games and train a small move transformer locally.",
+        description="Prepare move sequences from games.csv and train a small model locally.",
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    download_parser = subparsers.add_parser(
-        "download-lichess", help="Download a PGN or PGN.ZST file."
-    )
-    download_parser.add_argument("--url", required=True)
-    download_parser.add_argument("--output", type=Path, required=True)
-
     prepare_parser = subparsers.add_parser(
-        "prepare-dataset", help="Parse PGNs into move-token sequences."
+        "prepare-dataset", help="Parse games.csv into move-token sequences."
     )
-    prepare_parser.add_argument("--input", type=Path, required=True)
+    prepare_parser.add_argument(
+        "--input",
+        type=Path,
+        default=Path("simple_chess_transformer/games.csv"),
+    )
     prepare_parser.add_argument("--output-dir", type=Path, required=True)
     prepare_parser.add_argument("--max-games", type=int, default=5000)
     prepare_parser.add_argument("--min-plies", type=int, default=10)
@@ -57,11 +54,6 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
-
-    if args.command == "download-lichess":
-        output = download_file(args.url, args.output)
-        print(f"Downloaded to {output}")
-        return
 
     if args.command == "prepare-dataset":
         summary = prepare_dataset(

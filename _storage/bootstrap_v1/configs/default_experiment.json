@@ -1,0 +1,125 @@
+{
+  "dataset": {
+    "max_games": 100000,
+    "processed_dir": "data/processed",
+    "rating_buckets": [
+      "<1600",
+      "1600-2000",
+      "2000-2400",
+      "2400+"
+    ],
+    "raw_dir": "data/raw",
+    "source": "lichess"
+  },
+  "evaluation": {
+    "color_asymmetry_metrics": [
+      "aggression",
+      "material_sacrifice_rate",
+      "tactical_move_frequency",
+      "defensive_move_frequency",
+      "king_safety",
+      "pawn_storm_frequency",
+      "castling_timing",
+      "center_control",
+      "piece_activity",
+      "opening_diversity",
+      "willingness_to_enter_imbalanced_positions"
+    ],
+    "fixed_eval_positions": 256,
+    "human_likeness_metrics": [
+      "human_move_matching_accuracy",
+      "move_matching_by_rating_bucket",
+      "opening_similarity_to_human_games",
+      "kl_divergence_from_supervised_policy",
+      "style_drift_after_rl"
+    ],
+    "policy_behavior_metrics": [
+      "policy_entropy",
+      "top_k_move_diversity",
+      "repeated_opening_lines",
+      "exploitability_by_older_checkpoints",
+      "robustness_against_unfamiliar_opponents"
+    ],
+    "stockfish_depth": 8,
+    "strength_metrics": [
+      "elo_against_fixed_bots",
+      "win_draw_loss_rate",
+      "stockfish_low_depth_performance",
+      "average_centipawn_loss",
+      "blunder_mistake_inaccuracy_rate"
+    ]
+  },
+  "goal": "Measure whether self-play RL changes strength, human-likeness, and White/Black strategic asymmetry in chess transformers.",
+  "hypothesis": "White-specialized models may become more initiative-seeking while Black-specialized models may become more defensive or counterattacking.",
+  "model_setups": [
+    {
+      "description": "Single transformer using side-to-move from the board state.",
+      "hidden_size": 256,
+      "legal_move_masking": true,
+      "max_sequence_length": 256,
+      "name": "shared_side_to_move",
+      "num_heads": 8,
+      "num_layers": 6,
+      "vocab_strategy": "board_plus_side_to_move"
+    },
+    {
+      "description": "Single transformer with an explicit color token.",
+      "hidden_size": 256,
+      "legal_move_masking": true,
+      "max_sequence_length": 256,
+      "name": "shared_color_conditioned",
+      "num_heads": 8,
+      "num_layers": 6,
+      "vocab_strategy": "color_token_plus_board"
+    },
+    {
+      "description": "Independent White and Black transformer policies.",
+      "hidden_size": 256,
+      "legal_move_masking": true,
+      "max_sequence_length": 256,
+      "name": "separate_color_models",
+      "num_heads": 8,
+      "num_layers": 6,
+      "vocab_strategy": "board_only_per_color_model"
+    }
+  ],
+  "project_name": "style-asymmetry-self-play-chess-transformers",
+  "reinforcement_learning": {
+    "dense_rewards": [
+      "stockfish_eval_improvement",
+      "blunder_penalty",
+      "legal_move_bonus",
+      "checkmate_threat_bonus",
+      "material_improvement",
+      "king_safety_improvement"
+    ],
+    "episodes_per_iteration": 512,
+    "num_iterations": 20,
+    "opponent_schedule": "self_play_only",
+    "reward_draw": 0.0,
+    "reward_loss": -1.0,
+    "reward_win": 1.0,
+    "use_dense_rewards": false
+  },
+  "supervised": {
+    "batch_size": 128,
+    "epochs": 5,
+    "learning_rate": 0.0003,
+    "metrics": [
+      "human_move_matching_accuracy",
+      "accuracy_by_color",
+      "accuracy_by_rating_bucket",
+      "legal_move_rate",
+      "opening_diversity",
+      "average_centipawn_loss",
+      "blunder_rate",
+      "aggression_score",
+      "material_sacrifice_rate",
+      "castling_timing",
+      "king_safety",
+      "piece_activity",
+      "center_control"
+    ],
+    "objective": "predict_human_move"
+  }
+}
