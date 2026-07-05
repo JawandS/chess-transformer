@@ -6,11 +6,20 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "chess>=1.11",
+    "numpy>=2.4.6",
     "torch>=2.2",
 ]
 
 [project.scripts]
 chess-transformer = "simple_chess_transformer.cli:main"
+chess-gui = "modular_chess_gui.cli:main"
+
+[tool.setuptools]
+py-modules = ["main", "parse_lichess"]
+
+[tool.setuptools.packages.find]
+include = ["simple_chess_transformer*", "modular_chess_gui*"]
+exclude = ["storage*", "_storage*"]
 
 [build-system]
 requires = ["setuptools>=68"]

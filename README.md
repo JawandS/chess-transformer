@@ -63,6 +63,36 @@ python3 main.py prepare-dataset \
   --max-games 5000
 ```
 
+## Chess GUI
+
+There is also a separate modular chess app in `modular_chess_gui/`.
+
+It includes:
+
+- a simple game engine
+- pluggable player adapters
+- human vs model or model vs model play
+- multiple move notation styles for model input and move history
+- illegal-move retry handling for model players
+
+Launch it with:
+
+```bash
+uv run chess-gui
+```
+
+Built-in player types:
+
+- `human`
+- `random`
+- `first-legal`
+- `simple-transformer`
+
+`simple-transformer` loads the checkpoint path from the GUI setup panel, defaulting to `runs/2m/model.pt`.
+If it proposes illegal moves, the engine retries and logs each failed attempt to the terminal.
+
+To plug in a new model later, implement `BasePlayer.get_move_text(...)` or wrap a callable with `CallableModelPlayer` in [modular_chess_gui/players.py](/home/js/research/chess-transformer/modular_chess_gui/players.py:1).
+
 ## Commands
 
 - `prepare-dataset`: parse `games.csv` into tokenized move sequences for the baseline trainer

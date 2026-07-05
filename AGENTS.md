@@ -8,3 +8,5 @@
 - Active root now contains a minimal pipeline for downloading Lichess PGNs, preparing move-sequence datasets, and training a small local transformer.
 - Added `parse_lichess.py` as the primary streaming parser for the simpler board-state supervision path: stdin PGN to CSV rows of `fen_before -> uci_move`.
 - Extracted `chess.zip` into `simple_chess_transformer/games.csv`, removed the zip, and simplified the active code to read `games.csv` directly.
+- Added a separate `modular_chess_gui/` package with a simple chess engine, pluggable players, notation handling, and a Tkinter GUI for human-vs-model or model-vs-model games.
+- Wired the trained `simple_chess_transformer` checkpoint into `modular_chess_gui/` as `simple-transformer`, with illegal move retries logged to the terminal.

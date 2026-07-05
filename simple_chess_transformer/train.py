@@ -41,6 +41,42 @@ def _lazy_import_torch():
     return torch, nn, DataLoader, Dataset
 
 
+def build_causal_transformer(torch, nn, vocab_size: int, max_len: int, pad_id: int, config: TrainConfig):
+    class CausalTransformer(nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.token_embedding = nn.Embedding(vocab_size, config.embedding_dim)
+            self.position_embedding = nn.Embedding(max_len, config.embedding_dim)
+            encoder_layer = nn.TransformerEncoderLayer(
+                d_model=config.embedding_dim,
+                nhead=config.num_heads,
+                dim_feedforward=config.ff_dim,
+                dropout=config.dropout,
+                batch_first=True,
+            )
+            self.encoder = nn.TransformerEncoder(
+                encoder_layer,
+                num_layers=config.num_layers,
+            )
+            self.norm = nn.LayerNorm(config.embedding_dim)
+            self.head = nn.Linear(config.embedding_dim, vocab_size)
+
+        def forward(self, tokens):
+            batch_size, seq_len = tokens.shape
+            positions = torch.arange(seq_len, device=tokens.device).unsqueeze(0)
+            x = self.token_embedding(tokens) + self.position_embedding(positions)
+            causal_mask = torch.triu(
+                torch.ones((seq_len, seq_len), device=tokens.device, dtype=torch.bool),
+                diagonal=1,
+            )
+            padding_mask = tokens.eq(pad_id)
+            x = self.encoder(x, mask=causal_mask, src_key_padding_mask=padding_mask)
+            x = self.norm(x)
+            return self.head(x)
+
+    return CausalTransformer()
+
+
 def _load_dataset(dataset_dir: Path) -> tuple[list[list[str]], list[str]]:
     games_path = dataset_dir / "games.jsonl"
     vocab_path = dataset_dir / "vocab.json"
@@ -97,38 +133,6 @@ def train_model(config: TrainConfig) -> dict:
             y_tensor[row, : len(y)] = torch.tensor(y, dtype=torch.long)
         return x_tensor, y_tensor
 
-    class CausalTransformer(nn.Module):
-        def __init__(self) -> None:
-            super().__init__()
-            self.token_embedding = nn.Embedding(len(vocab), config.embedding_dim)
-            self.position_embedding = nn.Embedding(max_len, config.embedding_dim)
-            encoder_layer = nn.TransformerEncoderLayer(
-                d_model=config.embedding_dim,
-                nhead=config.num_heads,
-                dim_feedforward=config.ff_dim,
-                dropout=config.dropout,
-                batch_first=True,
-            )
-            self.encoder = nn.TransformerEncoder(
-                encoder_layer,
-                num_layers=config.num_layers,
-            )
-            self.norm = nn.LayerNorm(config.embedding_dim)
-            self.head = nn.Linear(config.embedding_dim, len(vocab))
-
-        def forward(self, tokens):
-            batch_size, seq_len = tokens.shape
-            positions = torch.arange(seq_len, device=tokens.device).unsqueeze(0)
-            x = self.token_embedding(tokens) + self.position_embedding(positions)
-            causal_mask = torch.triu(
-                torch.full((seq_len, seq_len), float("-inf"), device=tokens.device),
-                diagonal=1,
-            )
-            padding_mask = tokens.eq(pad_id)
-            x = self.encoder(x, mask=causal_mask, src_key_padding_mask=padding_mask)
-            x = self.norm(x)
-            return self.head(x)
-
     device = (
         "cuda"
         if config.device == "auto" and torch.cuda.is_available()
@@ -137,7 +141,14 @@ def train_model(config: TrainConfig) -> dict:
         else config.device
     )
 
-    model = CausalTransformer().to(device)
+    model = build_causal_transformer(
+        torch=torch,
+        nn=nn,
+        vocab_size=len(vocab),
+        max_len=max_len,
+        pad_id=pad_id,
+        config=config,
+    ).to(device)
     optimizer = torch.optim.AdamW(
         model.parameters(),
         lr=config.learning_rate,
