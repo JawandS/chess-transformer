@@ -1,0 +1,18 @@
+[project]
+name = "chess-transformer"
+version = "0.1.0"
+description = "Workspace for simple chess transformer experiments"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "chess>=1.11",
+    "torch>=2.2",
+    "zstandard>=0.23",
+]
+
+[project.scripts]
+chess-transformer = "simple_chess_transformer.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
